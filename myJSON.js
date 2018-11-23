@@ -1,13 +1,22 @@
-/* eslint-disable no-console */
-var myJSON = {
-  basicMap:{
-    'null': null,
-    'false': false,
-    'true': true,
+const BASIC_MAP = {
+  null: null,
+  false: false,
+  true: true,
+}
+
+export const util = {
+  isBasic(input){
+    return !/[,{}[\]]/.test(input)
+  },
+  isObject(str){
+    return str[0] === '{'
+  },
+  isArray(str){
+    return str[0] === '['
   },
   getBasic(input) {
-    if(input in this.basicMap){
-      return this.basicMap[input]
+    if(input in BASIC_MAP){
+      return BASIC_MAP[input]
     }
     if (/^\d+$/.test(input)) {
       return Number(input);
@@ -21,66 +30,110 @@ var myJSON = {
     }
     throw new Error('basic not fit JSON: ' + input );
   },
+  getStringIndex( /** @type {string} */ input, /** @type {number} */ posIndex){
+    const startIndex = input.indexOf('"') + posIndex;
+    const endIndex = input.indexOf('"', startIndex + 1) + posIndex;
+    return [startIndex, endIndex];
+  },
+  getKey(input, startIndex, endIndex){
+    return input.slice(startIndex + 1, endIndex);
+  },
+  getObjectValue( /** @type {string} */ input, /** @type {number} */endIndex){
+    const index = input.indexOf(':', endIndex + 1);
+    return input.slice(index + 1, input.length - 1).trim();
+  },
+  getPairingIndex(/** @type {string} */ originInput, openChar, closeChar, posIndex){
+    let input = originInput.slice(posIndex)
+    let openNum = 1;
+    let closeNum = 0;
+    let length = input.length;
+    for(let i = input.indexOf(openChar) + 1; i < length; i++){
+      let char = input[i];
+      if(char === openChar){
+        openNum++
+      } else if(char === closeChar){
+        closeNum++
+      }
+      if(openNum === closeNum){
+        return i + posIndex;
+      }
+      if(openNum < closeNum){
+        throw new Error('JSON 对象格式有错误吧！');
+      }
+    }
+    throw new Error('JSON 对象格式有错误吧！');
+  },
+  getArrayIndex ( /** @type {string} */ input, posIndex) {
+    return util.getPairingIndex(input, '[', ']', posIndex)
+  },
+  getObjectIndex( /** @type {string} */ input, posIndex){
+    return util.getPairingIndex(input, '{', '}', posIndex);
+  },
+  isBlankArray(/** @type {strign} */input){
+    return /^\[\s*\]$/.test(input);
+  },
+  getArrayItemEndIndex(/** @type {string} */ input, /** @type {number} */index){
+    const realInput = input.slice(index + 1).trim();
+    const firstChar = realInput[0];
+    let endIndex = index
+    if(firstChar === '"'){
+      endIndex = util.getStringIndex(input, index)[1]
+    } else if(firstChar === '{'){
+      endIndex = util.getObjectIndex(input, index);
+    } else if(firstChar === '['){
+      endIndex = util.getArrayIndex(input, index);
+    }
+    // 后面可能还有空格，也要计算进去
+    return input.indexOf(',', endIndex);
+  },
+}
+
+var myJSON = {
   getObject ( /** @type {string} */ input) {
-    const key = this.getObjectKey(input);
-    const valueString = this.getObjectValue(input, key);
-    const value = this.parser(valueString);
+    const [startIndex, endIndex] = util.getStringIndex(input, 0);
+    const key = util.getKey(input, startIndex, endIndex);
+    const valueString = util.getObjectValue(input, endIndex);
+    const value = util.isBasic(valueString) ? util.getBasic(valueString) : this.parser(valueString);
     return {
       [key]: value
     };
   },
-  getObjectKey( /** @type {string} */ input){
-    const length = input.length;
-    let index = 2;
-    while(input[index] !== '"' && index < length){
-      index++
-    }
-    return input.slice(2, index);
-  },
-  getObjectValue( /** @type {string} */ input, /** @type {string} */key){
-    const index = input.indexOf(':', key.length+3);
-    return input.slice(index + 1, input.length - 1)
-  },
   getArray ( /** @type {string} */ input) {
+    const list = [];
+    if(util.isBlankArray(input)){
+      return list;
+    }
+    // 最后的 ] 符号的index
+    const lastIndex = input.length - 1;
 
-  },
-  isBasic(input){
-    return !/[,\{\}\[\]]/.test(input)
-  },
-  isObject(str){
-    return str[0] === '{'
-  },
-  isArray(str){
-    return str[0] === '['
+    let index = 0;
+    while(index < lastIndex){
+      let endIndex = util.getArrayItemEndIndex(input, index)
+      if(endIndex === -1){
+        endIndex = lastIndex;
+      }
+      const valueString = input.slice(index + 1, endIndex).trim();
+      index = endIndex + 1;
+      list.push(util.isBasic(valueString) ? util.getBasic(valueString) : this.parser(valueString))
+    }
+    return list;
   },
   parser(str) {
     const input = String(str).trim();
     if (!input) {
       throw new Error('Unexpected end of JSON input');
     }
-    if(this.isBasic(str)){
-      return this.getBasic(str);
+    if(util.isBasic(str)){
+      return util.getBasic(str);
     }
-    if(this.isObject(str)){
+    if(util.isObject(str)){
       return this.getObject(str);
     }
-    if(this.isArray(str)){
+    if(util.isArray(str)){
       return this.getArray(str);
     }
-    return '其他情况还没完成'
-    // let index = 0;
-    // function next() {
-    //   return input[index++];
-    // }
+    throw new Error('还有新情况处理。。。')
   },
 };
 
-
-// console.log(myJSON.getObjectKey('{"a13414":1111}'));
-// console.log(myJSON.getObjectValue('{"a13414":1111}', 'a13414'));
-
-
 export default myJSON;
-
-
-// console.log(1, JSON.parse(test));
