@@ -1,0 +1,26 @@
+{
+  "name": "11",
+  "version": "1.0.0",
+  "description": "",
+  "main": "addV.js",
+  "scripts": {
+    "test": "mocha --require @babel/register"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "babel": {
+    "presets": [["@babel/env"]],
+    "plugins": [
+      "babel-plugin-espower"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.1.6",
+    "@babel/preset-env": "^7.1.6",
+    "@babel/register": "^7.0.0",
+    "babel-plugin-espower": "^3.0.0",
+    "mocha": "^5.2.0",
+    "power-assert": "^1.6.1"
+  }
+}
